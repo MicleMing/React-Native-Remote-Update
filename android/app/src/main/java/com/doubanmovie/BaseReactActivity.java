@@ -12,6 +12,7 @@ import android.os.Environment;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.widget.Toast;
+import javafx.concurrent.Task;
 
 import com.facebook.react.LifecycleState;
 import com.facebook.react.ReactInstanceManager;
@@ -25,6 +26,10 @@ import com.facebook.react.shell.MainReactPackage;
 import java.io.File;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Base react native which can load js bundle file from remote server to update
@@ -44,13 +49,23 @@ public class BaseReactActivity extends Activity implements DefaultHardwareBackBt
     private CompleteReceiver mDownloadCompleteReceiver;
     private long mDownloadId;
 
+    private class Task implements Runnable {
+        @Override
+        public void run() {
+            updateBundle();
+        }
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         iniReactRootView();
         setContentView(mReactRootView);
         initDownloadManager();
-        updateBundle();
+
+        ScheduledThreadPoolExecutor sExecutor = new ScheduledThreadPoolExecutor(3);
+        Task task = new Task();
+        sExecutor.scheduleWithFixedDelay(task, 1, 5, TimeUnit.SECONDS);
     }
 
     private void initDownloadManager() {
@@ -86,21 +101,21 @@ public class BaseReactActivity extends Activity implements DefaultHardwareBackBt
         unregisterReceiver(mDownloadCompleteReceiver);
     }
 
-    private void updateBundle() {
+    public void updateBundle() {
 
         // Should add version check here, if bundle file
         // is the newest , we do not need to update
 
-        File file = new File(JS_BUNDLE_LOCAL_PATH);
-        if(file != null && file.exists()){
-            Log.i(TAG, "newest bundle exists !");
-            return;
-        }
+        // File file = new File(JS_BUNDLE_LOCAL_PATH);
+        // if(file != null && file.exists()){
+        //     Log.i(TAG, "newest bundle exists !");
+        //     return;
+        // }
 
-        //Toast.makeText(BaseReactActivity.this, "Start downloading update", Toast.LENGTH_SHORT).show();
+        // Toast.makeText(BaseReactActivity.this, "Start downloading update", Toast.LENGTH_SHORT).show();
 
         DownloadManager.Request request = new DownloadManager.Request(Uri.parse(JS_BUNDLE_REMOTE_URL));
-        request.setAllowedNetworkTypes(DownloadManager.Request.NETWORK_WIFI);
+        // request.setAllowedNetworkTypes(DownloadManager.Request.NETWORK_WIFI);
         request.setDestinationUri(Uri.parse("file://" + JS_BUNDLE_LOCAL_PATH));
         DownloadManager dm = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
         mDownloadId = dm.enqueue(request);
